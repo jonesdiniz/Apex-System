@@ -9,12 +9,12 @@
 ```
 Production (Docker):
 ├── API Gateway:  http://localhost:8000
-├── RL Engine:    http://localhost:8001
+├── RL Engine:    http://localhost:8008
 └── Ecosystem:    http://localhost:8002
 
 Development (Local):
 ├── API Gateway:  http://localhost:8000
-└── RL Engine:    http://localhost:8001
+└── RL Engine:    http://localhost:8008
 ```
 
 ---
@@ -312,7 +312,7 @@ GET /health
 
 ### **RL Engine Health**
 ```http
-GET http://localhost:8001/health
+GET http://localhost:8008/health
 ```
 
 **Response:**
@@ -347,7 +347,7 @@ The RL Engine learns automatically from events. No need to manually call `/learn
 ```javascript
 // Poll every 30 seconds for learning metrics
 setInterval(async () => {
-  const response = await fetch('http://localhost:8001/api/v1/metrics');
+  const response = await fetch('http://localhost:8008/api/v1/metrics');
   const metrics = await response.json();
   updateDashboard(metrics);
 }, 30000);
@@ -357,7 +357,7 @@ setInterval(async () => {
 ```javascript
 // Poll every 60 seconds for strategy updates
 setInterval(async () => {
-  const response = await fetch('http://localhost:8001/api/v1/strategies');
+  const response = await fetch('http://localhost:8008/api/v1/strategies');
   const strategies = await response.json();
   updateStrategiesList(strategies);
 }, 60000);
@@ -411,7 +411,7 @@ export const ActionRecommendation: React.FC = () => {
   const [action, setAction] = useState<any>(null);
 
   const getRecommendation = async (state: CampaignState) => {
-    const response = await fetch('http://localhost:8001/api/v1/actions/generate', {
+    const response = await fetch('http://localhost:8008/api/v1/actions/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ current_state: state })
@@ -454,7 +454,7 @@ export const MetricsDashboard: React.FC = () => {
   }, []);
 
   const fetchMetrics = async () => {
-    const response = await fetch('http://localhost:8001/api/v1/metrics');
+    const response = await fetch('http://localhost:8008/api/v1/metrics');
     const data = await response.json();
     setMetrics(data);
   };
@@ -554,7 +554,7 @@ All services register with the API Gateway. Frontend should only communicate wit
 - `http://localhost:8000` - All OAuth endpoints
 
 **RL Engine (Optional Direct Access):**
-- `http://localhost:8001` - All Q-Learning endpoints
+- `http://localhost:8008` - All Q-Learning endpoints
 
 **Ecosystem Platform (Internal Only):**
 - `http://localhost:8002` - Do NOT access directly from frontend

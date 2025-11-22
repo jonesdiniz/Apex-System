@@ -12,7 +12,7 @@ class RLEngineSettings(BaseSettings):
 
     # Service Configuration
     service_name: str = Field(default="rl-engine", env="SERVICE_NAME")
-    service_port: int = Field(default=8001, env="PORT")
+    service_port: int = Field(default=8008, env="PORT")
     service_host: str = Field(default="0.0.0.0", env="HOST")
     environment: str = Field(default="development", env="ENVIRONMENT")
     version: str = Field(default="4.0.0", env="VERSION")
