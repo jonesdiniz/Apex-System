@@ -1,0 +1,23 @@
+API Gateway v4.1.2 - Deploy Information
+=====================================
+
+Deploy Date: Wed Aug 27 07:27:43 PM UTC 2025
+Project ID: apexsystem15072025
+Service Name: apex-api-gateway
+Region: southamerica-east1
+Service URL: https://apex-api-gateway-qfom45ytiq-rj.a.run.app
+Image: gcr.io/apexsystem15072025/apex-api-gateway:v4-1-2-20250827-192626
+
+URLs:
+- Health Check: https://apex-api-gateway-qfom45ytiq-rj.a.run.app/health
+- Documentation: https://apex-api-gateway-qfom45ytiq-rj.a.run.app/docs
+- OAuth URLs: https://apex-api-gateway-qfom45ytiq-rj.a.run.app/auth/{platform}
+
+Monitoring:
+- Logs: gcloud logs tail --follow --resource-type=cloud_run_revision --resource-labels=service_name=apex-api-gateway --project=apexsystem15072025
+- Status: gcloud run services describe apex-api-gateway --region=southamerica-east1 --project=apexsystem15072025
+
+Service Account: apex-api-gateway@apexsystem15072025.iam.gserviceaccount.com
+
+Note: OAuth availability depends on secrets configured in Secret Manager.
+The application will handle missing secrets gracefully at runtime.

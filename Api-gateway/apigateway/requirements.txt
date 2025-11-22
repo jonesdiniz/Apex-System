@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+httpx
+pydantic[email]
+pydantic-settings
+google-cloud-secret-manager
+google-cloud-logging
+google-cloud-firestore
+python-multipart
+prometheus-fastapi-instrumentator
+requests
