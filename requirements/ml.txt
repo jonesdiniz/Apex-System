@@ -1,0 +1,21 @@
+# Machine Learning Dependencies (for Future-Casting & RL Engine)
+-r base.txt
+
+# ML Core
+numpy==1.26.3
+pandas==2.1.4
+scikit-learn==1.4.0
+
+# Deep Learning (optional)
+# torch==2.1.2
+# tensorflow==2.15.0
+
+# RL Libraries
+gym==0.26.2
+
+# Time Series
+statsmodels==0.14.1
+
+# Visualization
+matplotlib==3.8.2
+seaborn==0.13.1
