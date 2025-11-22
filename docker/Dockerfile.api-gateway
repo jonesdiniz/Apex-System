@@ -1,0 +1,37 @@
+# Dockerfile for API Gateway
+# Clean Architecture with OAuth 2.0
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first (for better caching)
+COPY requirements/base.txt requirements/base.txt
+RUN pip install --no-cache-dir -r requirements/base.txt
+
+# Copy source code
+COPY src/ src/
+
+# Set PYTHONPATH to include /app/src for proper imports
+ENV PYTHONPATH=/app/src:$PYTHONPATH
+
+# Create logs directory
+RUN mkdir -p /app/logs
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run API Gateway
+CMD ["python", "-m", "uvicorn", "services.api_gateway.presentation.main:app", \
+     "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

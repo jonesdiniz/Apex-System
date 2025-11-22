@@ -1,0 +1,39 @@
+# Dockerfile for RL Engine
+# Q-Learning with Event-Driven Learning
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first (for better caching)
+COPY requirements/base.txt requirements/base.txt
+COPY requirements/ml.txt requirements/ml.txt
+RUN pip install --no-cache-dir -r requirements/base.txt
+RUN pip install --no-cache-dir -r requirements/ml.txt
+
+# Copy source code
+COPY src/ src/
+
+# Set PYTHONPATH to include /app/src for proper imports
+ENV PYTHONPATH=/app/src:$PYTHONPATH
+
+# Create logs directory
+RUN mkdir -p /app/logs
+
+# Expose port
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# Run RL Engine
+CMD ["python", "-m", "uvicorn", "services.rl_engine.presentation.main:app", \
+     "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
