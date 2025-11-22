@@ -1,0 +1,340 @@
+version: '3.8'
+
+# APEX System - Local Execution
+# Complete docker-compose for all microservices + infrastructure
+
+networks:
+  apex_network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+services:
+  # ============================================================================
+  # INFRASTRUCTURE SERVICES
+  # ============================================================================
+
+  mongodb:
+    image: mongo:7.0
+    container_name: apex-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: apex_admin
+      MONGO_INITDB_ROOT_PASSWORD: apex_password_change_in_production
+      MONGO_INITDB_DATABASE: apex_system
+    volumes:
+      - mongodb_data:/data/db
+      - ./config/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - apex_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: apex-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - apex_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ============================================================================
+  # OBSERVABILITY STACK
+  # ============================================================================
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: apex-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - apex_network
+    depends_on:
+      - ecosystem-platform
+      - api-gateway
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: apex-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: apex_admin
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - apex_network
+    depends_on:
+      - prometheus
+
+  # ============================================================================
+  # CORE MICROSERVICES
+  # ============================================================================
+
+  ecosystem-platform:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ecosystem-platform
+    container_name: apex-ecosystem-platform
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - APEX_ENVIRONMENT=production
+      - APEX_LOG_LEVEL=INFO
+      - APEX_MONGODB_URL=mongodb://apex_admin:apex_password_change_in_production@mongodb:27017/apex_system?authSource=admin
+      - APEX_REDIS_URL=redis://redis:6379
+      - APEX_SERVICE_NAME=ecosystem-platform
+      - APEX_SERVICE_PORT=8002
+      - APEX_ENABLE_METRICS=true
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+    networks:
+      - apex_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api-gateway
+    container_name: apex-api-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APEX_ENVIRONMENT=production
+      - APEX_LOG_LEVEL=INFO
+      - APEX_MONGODB_URL=mongodb://apex_admin:apex_password_change_in_production@mongodb:27017/apex_system?authSource=admin
+      - APEX_REDIS_URL=redis://redis:6379
+      - APEX_SERVICE_NAME=api-gateway
+      - APEX_SERVICE_PORT=8000
+      - APEX_SECRET_KEY=change-this-in-production-very-secret-key
+      - APEX_ECOSYSTEM_PLATFORM_URL=http://ecosystem-platform:8002
+      - APEX_ENABLE_METRICS=true
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+    networks:
+      - apex_network
+    depends_on:
+      ecosystem-platform:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  creative-studio:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.creative-studio
+    container_name: apex-creative-studio
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      - APEX_ENVIRONMENT=production
+      - APEX_LOG_LEVEL=INFO
+      - APEX_MONGODB_URL=mongodb://apex_admin:apex_password_change_in_production@mongodb:27017/apex_system?authSource=admin
+      - APEX_REDIS_URL=redis://redis:6379
+      - APEX_SERVICE_NAME=creative-studio
+      - APEX_SERVICE_PORT=8003
+      - APEX_ECOSYSTEM_PLATFORM_URL=http://ecosystem-platform:8002
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+    networks:
+      - apex_network
+    depends_on:
+      ecosystem-platform:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  future-casting:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.future-casting
+    container_name: apex-future-casting
+    restart: unless-stopped
+    ports:
+      - "8004:8004"
+    environment:
+      - APEX_ENVIRONMENT=production
+      - APEX_LOG_LEVEL=INFO
+      - APEX_MONGODB_URL=mongodb://apex_admin:apex_password_change_in_production@mongodb:27017/apex_system?authSource=admin
+      - APEX_REDIS_URL=redis://redis:6379
+      - APEX_SERVICE_NAME=future-casting
+      - APEX_SERVICE_PORT=8004
+      - APEX_ECOSYSTEM_PLATFORM_URL=http://ecosystem-platform:8002
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+    networks:
+      - apex_network
+    depends_on:
+      ecosystem-platform:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  immune-system:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.immune-system
+    container_name: apex-immune-system
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    environment:
+      - APEX_ENVIRONMENT=production
+      - APEX_LOG_LEVEL=INFO
+      - APEX_MONGODB_URL=mongodb://apex_admin:apex_password_change_in_production@mongodb:27017/apex_system?authSource=admin
+      - APEX_REDIS_URL=redis://redis:6379
+      - APEX_SERVICE_NAME=immune-system
+      - APEX_SERVICE_PORT=8005
+      - APEX_ECOSYSTEM_PLATFORM_URL=http://ecosystem-platform:8002
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+    networks:
+      - apex_network
+    depends_on:
+      ecosystem-platform:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  proactive-conversation:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.proactive-conversation
+    container_name: apex-proactive-conversation
+    restart: unless-stopped
+    ports:
+      - "8006:8006"
+    environment:
+      - APEX_ENVIRONMENT=production
+      - APEX_LOG_LEVEL=INFO
+      - APEX_MONGODB_URL=mongodb://apex_admin:apex_password_change_in_production@mongodb:27017/apex_system?authSource=admin
+      - APEX_REDIS_URL=redis://redis:6379
+      - APEX_SERVICE_NAME=proactive-conversation
+      - APEX_SERVICE_PORT=8006
+      - APEX_ECOSYSTEM_PLATFORM_URL=http://ecosystem-platform:8002
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+    networks:
+      - apex_network
+    depends_on:
+      ecosystem-platform:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rl-engine:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.rl-engine
+    container_name: apex-rl-engine
+    restart: unless-stopped
+    ports:
+      - "8008:8008"
+    environment:
+      - APEX_ENVIRONMENT=production
+      - APEX_LOG_LEVEL=INFO
+      - APEX_MONGODB_URL=mongodb://apex_admin:apex_password_change_in_production@mongodb:27017/apex_system?authSource=admin
+      - APEX_REDIS_URL=redis://redis:6379
+      - APEX_SERVICE_NAME=rl-engine
+      - APEX_SERVICE_PORT=8008
+      - APEX_ECOSYSTEM_PLATFORM_URL=http://ecosystem-platform:8002
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+    networks:
+      - apex_network
+    depends_on:
+      ecosystem-platform:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

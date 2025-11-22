@@ -1,0 +1,91 @@
+# Prometheus configuration for APEX System
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'apex-local'
+    environment: 'production'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Ecosystem Platform
+  - job_name: 'ecosystem-platform'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ecosystem-platform:8002']
+        labels:
+          service: 'ecosystem-platform'
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api-gateway:8000']
+        labels:
+          service: 'api-gateway'
+
+  # Creative Studio
+  - job_name: 'creative-studio'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['creative-studio:8003']
+        labels:
+          service: 'creative-studio'
+
+  # Future Casting
+  - job_name: 'future-casting'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['future-casting:8004']
+        labels:
+          service: 'future-casting'
+
+  # Immune System
+  - job_name: 'immune-system'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['immune-system:8005']
+        labels:
+          service: 'immune-system'
+
+  # Proactive Conversation
+  - job_name: 'proactive-conversation'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['proactive-conversation:8006']
+        labels:
+          service: 'proactive-conversation'
+
+  # RL Engine
+  - job_name: 'rl-engine'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['rl-engine:8008']
+        labels:
+          service: 'rl-engine'
+
+  # MongoDB Exporter (if added)
+  # - job_name: 'mongodb'
+  #   static_configs:
+  #     - targets: ['mongodb-exporter:9216']
+
+  # Redis Exporter (if added)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+
+# Alerting rules (optional)
+# rule_files:
+#   - 'alerts/*.yml'
+
+# Alertmanager configuration (optional)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']

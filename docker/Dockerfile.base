@@ -1,0 +1,43 @@
+# APEX System - Base Docker Image
+# Python 3.11 with all common dependencies
+
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy requirements
+COPY requirements/base.txt /app/requirements/base.txt
+
+# Install Python dependencies
+RUN pip install --upgrade pip && \
+    pip install -r requirements/base.txt
+
+# Create logs directory
+RUN mkdir -p /app/logs && \
+    chmod 777 /app/logs
+
+# Add health check script
+COPY docker/healthcheck.sh /usr/local/bin/healthcheck
+RUN chmod +x /usr/local/bin/healthcheck
+
+# Non-root user for security
+RUN useradd -m -u 1000 apex && \
+    chown -R apex:apex /app
+USER apex
+
+# Default command (will be overridden by service-specific Dockerfiles)
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0"]
