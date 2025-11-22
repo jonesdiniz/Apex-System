@@ -136,7 +136,7 @@ apex-grafana            Up
 curl http://localhost:8000/health
 
 # RL Engine
-curl http://localhost:8001/health
+curl http://localhost:8008/health
 
 # Ecosystem Platform
 curl http://localhost:8002/health
@@ -163,10 +163,10 @@ curl -I "http://localhost:8000/auth/google/authorize?user_id=test_user"
 
 ```bash
 # Get available actions
-curl http://localhost:8001/api/v1/actions/available
+curl http://localhost:8008/api/v1/actions/available
 
 # Get metrics
-curl http://localhost:8001/api/v1/metrics
+curl http://localhost:8008/api/v1/metrics
 ```
 
 ---
@@ -370,7 +370,7 @@ docker network ls
 while true; do
   echo "=== Health Check ==="
   curl -s http://localhost:8000/health | jq .status
-  curl -s http://localhost:8001/health | jq .status
+  curl -s http://localhost:8008/health | jq .status
   sleep 30
 done
 ```
